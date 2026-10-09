@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="bg">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#173b32"><link rel="manifest" href="manifest.webmanifest">
+<title>Преводач BG — Google Cloud Translation</title>
+<style>
+:root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#17231e;background:#f3f7f4}
+*{box-sizing:border-box}body{margin:0}header{background:#173b32;color:#fff;padding:23px 17px 26px}
+.wrap{max-width:800px;margin:auto}h1{margin:0 0 6px;font-size:1.55rem}header p{margin:0;color:#dce9e2}
+main{padding:15px;max-width:800px;margin:auto}.panel{background:#fff;border:1px solid #dce6e0;border-radius:17px;padding:16px;margin-bottom:13px}
+h2{font-size:1.03rem;margin:0 0 12px}label{display:block;font-weight:650;margin:12px 0 6px}
+input,select,textarea,button{font:inherit}input[type=text],input[type=password],select,textarea{width:100%;border:1px solid #cbd8d0;border-radius:10px;padding:11px;background:white}
+input[type=file]{width:100%;padding:12px;border:1px dashed #9bb3a5;border-radius:12px;background:#f8fbf9}
+button{border:0;border-radius:11px;padding:12px 14px;font-weight:700;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:#176b50;color:#fff;width:100%;margin-top:14px}.secondary{background:#e8f0eb;color:#173b32}.danger{background:#f8e9e7;color:#842d22}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:11px}.muted{color:#61716a;font-size:.88rem}.small{font-size:.8rem}.status{white-space:pre-wrap;background:#f4f7f5;padding:11px;border-radius:10px;min-height:42px;overflow-wrap:anywhere}
+progress{width:100%;height:12px;accent-color:#176b50}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.actions button{flex:1;min-width:115px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}.stat{background:#f3f7f4;border-radius:10px;padding:9px}.stat strong{display:block;font-size:1.1rem}.stat span{font-size:.75rem;color:#61716a}
+.notice{border-left:4px solid #d4a03c;padding:10px 12px;background:#fff8e8;border-radius:8px;font-size:.87rem}
+@media(max-width:520px){.row{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><div class="wrap"><h1>Преводач BG</h1><p>Буквален превод на книги — изречение по изречение</p></div></header>
+<main>
+<section class="panel">
+<h2>1. Избери книга</h2>
+<input id="file" type="file" accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+<p class="muted">TXT, DOCX и PDF с текстов слой. Сканираните PDF файлове изискват OCR, което още не е включено.</p>
+<div class="row">
+<div><label>Език на оригинала</label><p id="detected" class="status">Ще се разпознае автоматично</p></div>
+<div><label for="target">Език на превода</label><select id="target"><option value="bg" selected>Български</option><option value="en">Английски</option><option value="ru">Руски</option><option value="de">Немски</option><option value="fr">Френски</option><option value="es">Испански</option><option value="it">Италиански</option><option value="tr">Турски</option><option value="el">Гръцки</option><option value="pl">Полски</option><option value="uk">Украински</option><option value="ro">Румънски</option><option value="sr">Сръбски</option><option value="pt">Португалски</option><option value="zh">Китайски</option><option value="ja">Японски</option></select></div>
+</div>
+<div><label for="format">Формат на изхода</label><select id="format"><option value="docx">DOCX — препоръчително</option><option value="txt">TXT</option><option value="pdf">PDF — експериментално</option></select></div>
+</section>
+<section class="panel">
+<h2>2. Настрой превода</h2>
+<label for="apiKey">Google Cloud Translation API key</label><input id="apiKey" type="password" autocomplete="off" placeholder="Постави своя API ключ тук">
+<p class="muted small">Ключът се въвежда на устройството и не трябва да се качва в GitHub. В Google Cloud ограничи ключа само до Cloud Translation API.</p>
+<div class="notice">Предпазен лимит в приложението: до 450 000 входни знака за календарен месец на това устройство. Това е локална защита, не общ лимит за целия Google Cloud проект. Настрой и квота в Google Cloud Console.</div>
+<div class="row">
+<div><label for="delay">Пауза между изреченията</label><select id="delay"><option value="0" selected>Автоматично (по-бързо)</option><option value="250">0,25 секунди</option><option value="800">0,8 секунди</option><option value="1500">1,5 секунди</option><option value="3000">3 секунди</option></select></div>
+<div><label for="retry">Повторни опити при грешка</label><select id="retry"><option value="2">2 опита</option><option value="4" selected>4 опита</option><option value="6">6 опита</option></select></div>
+</div>
+<p class="muted small">Преводът използва официалния Google Cloud Translation Basic API. Изходният език се разпознава автоматично от Google. Напредъкът се записва след всяко изречение.</p>
+<button id="start" class="primary">Подготви книгата и преведи</button>
+<div class="actions"><button id="resume" class="secondary" disabled>Продължи</button><button id="pause" class="secondary" disabled>Пауза</button><button id="stop" class="danger" disabled>Спри</button></div>
+<button id="clear" class="danger" style="width:100%;margin-top:9px">Изтрий запазения напредък</button>
+</section>
+<section class="panel">
+<h2>3. Напредък</h2><progress id="progress" max="100" value="0"></progress>
+<div class="stats"><div class="stat"><strong id="done">0</strong><span>Преведени изречения</span></div><div class="stat"><strong id="total">0</strong><span>Общо изречения</span></div><div class="stat"><strong id="percent">0%</strong><span>Завършено</span></div></div>
+<p id="status" class="status">Избери файл, за да започнеш.</p>
+</section>
+<section class="panel">
+<h2>4. Преглед и запазване</h2>
+<textarea id="preview" rows="8" readonly placeholder="Тук ще се появи преводът…"></textarea>
+<button id="download" class="primary" disabled>Запази цялата преведена книга</button>
+</section>
+<section class="panel">
+<h2>Важно</h2>
+<div class="notice">Не превеждай до настройване на API квота. Безплатните 500 000 знака се отнасят до месечния обем според актуалните условия на Google; приложението ограничава локалната си употреба до 450 000 знака, но не вижда употребата от други устройства или проекти. Настрой квоти/бюджет в Google Cloud.</div>
+<p class="muted small">Прототипът извлича текста и създава нов файл; не запазва напълно оригиналното оформление, изображенията, таблиците и бележките. DOCX е препоръчителен. PDF експортът може да има проблеми с кирилицата.</p>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.5.0/docx.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const $=id=>document.getElementById(id), DB_NAME='prevodach-bg-sentences', STORE='tasks', TASK_KEY='latest';
+let task=null,running=false,paused=false,stopped=false,googleCallbacks=new Map(),googleCallbackId=0;
+window.onGoogleTranslationResult=(id,result)=>{const cb=googleCallbacks.get(id);if(!cb)return;googleCallbacks.delete(id);cb(result)};
+function monthKey(){const d=new Date();return 'pbg-google-chars-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function monthUsed(){return Number(localStorage.getItem(monthKey())||'0')}
+function addMonthUsed(n){localStorage.setItem(monthKey(),String(monthUsed()+n))}
+function languageName(code){return ({bg:'български',en:'английски',ru:'руски',de:'немски',fr:'френски',es:'испански',it:'италиански',tr:'турски',el:'гръцки',pl:'полски',uk:'украински',ro:'румънски',sr:'сръбски',pt:'португалски',zh:'китайски',ja:'японски'})[code]||code||'неизвестен'}
+function say(s){$('status').textContent=s}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,1);r.onupgradeneeded=()=>r.result.createObjectStore(STORE);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+async function persist(){try{const db=await openDB();await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).put(task,TASK_KEY);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();return true}catch(e){say('Не успях да запазя напредъка локално: '+e.message);return false}}
+async function restore(){try{const db=await openDB();task=await new Promise((resolve,reject)=>{const r=db.transaction(STORE).objectStore(STORE).get(TASK_KEY);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>reject(r.error)});db.close();if(task){if(task.detectedSourceLanguage)$('detected').textContent='Разпознат език: '+languageName(task.detectedSourceLanguage);if(task.target)$('target').value=task.target;stats();say('Намерена е запазена книга: '+task.fileName+'. Можеш да продължиш.')}}catch(e){say('Локалното хранилище не е достъпно. Отвори приложението в браузър с IndexedDB.')}}
+function stats(){const total=task?.sentences?.length||0,done=task?.translated?.filter(x=>typeof x==='string').length||0;$('done').textContent=done;$('total').textContent=total;$('percent').textContent=(total?Math.floor(done/total*100):0)+'%';$('progress').value=total?done/total*100:0;$('preview').value=task?rebuildText():'';$('download').disabled=!(total&&done===total);$('resume').disabled=running||!task||done===total;$('pause').disabled=!running;$('stop').disabled=!running}
+function rebuildText(){if(!task)return '';let out='',idx=0;for(const p of task.paragraphs){const pieces=[];for(let j=0;j<p.count;j++){pieces.push(task.translated[idx]??'');idx++}out+=pieces.join(' ')+'\n\n'}return out.trim()}
+function sentenceSplit(paragraph){
+ const trimmed=paragraph.trim();if(!trimmed)return [];
+ try{if(typeof Intl.Segmenter==='function'){const seg=new Intl.Segmenter(undefined,{granularity:'sentence'});return Array.from(seg.segment(trimmed),x=>x.segment.trim()).filter(Boolean)}}catch(e){}
+ return (trimmed.match(/[^.!?…]+(?:[.!?…]+["'»”’)]*)?|[.!?…]+/g)||[trimmed]).map(s=>s.trim()).filter(Boolean)
+}
+function splitParagraphs(text){
+ const paragraphs=text.replace(/\r/g,'').split(/\n\s*\n+/).map(p=>p.trim()).filter(Boolean);
+ const sentences=[],meta=[];
+ for(const p of paragraphs){const ss=sentenceSplit(p);if(!ss.length)continue;meta.push({count:ss.length});for(const s of ss)sentences.push(s)}
+ return {sentences,paragraphs:meta}
+}
+async function extract(file){
+ const ext=file.name.split('.').pop().toLowerCase();
+ if(ext==='txt')return await file.text();
+ if(ext==='docx'){const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()});return r.value}
+ if(ext==='pdf'){const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;let pages=[];for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i),c=await p.getTextContent();pages.push(c.items.map(x=>x.str).join(' '));say('Извличане от PDF: страница '+i+' от '+pdf.numPages)}return pages.join('\n\n')}
+ throw new Error('Форматът не се поддържа.')
+}
+async function apiTranslate(text){
+ const key=$('apiKey').value.trim(),target=$('target').value;
+ if(!key)throw new Error('Въведи Google Cloud Translation API key.');
+ if(monthUsed()+text.length>450000)throw new Error('Достигнат е локалният предпазен лимит от 450 000 знака за този месец.');
+ let last;
+ for(let n=1;n<=Number($('retry').value);n++){
+  try{
+   let data;
+   if(window.AndroidBridge&&window.AndroidBridge.translateGoogle){
+    const id=++googleCallbackId;
+    data=await new Promise((resolve,reject)=>{googleCallbacks.set(id,resolve);window.AndroidBridge.translateGoogle(text,target,key,id);setTimeout(()=>{if(googleCallbacks.has(id)){googleCallbacks.delete(id);reject(new Error('Изтече времето за отговор от Google API.'))}},60000)});
+   } else {
+    const url='https://translation.googleapis.com/language/translate/v2?key='+encodeURIComponent(key);
+    const res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:text,target:target,format:'text'})});
+    const json=await res.json();if(!res.ok)throw new Error(json?.error?.message||('HTTP '+res.status));
+    const tr=json?.data?.translations?.[0];if(!tr)throw new Error('Невалиден отговор от Google API.');
+    data={ok:true,translatedText:tr.translatedText,detectedSourceLanguage:tr.detectedSourceLanguage};
+   }
+   if(!data.ok)throw new Error(data.error||'Грешка от Google Translation API.');
+   if(typeof data.translatedText!=='string')throw new Error('Google API не върна превод.');
+   addMonthUsed(text.length);
+   if(data.detectedSourceLanguage){$('detected').textContent='Разпознат език: '+languageName(data.detectedSourceLanguage);task.detectedSourceLanguage=data.detectedSourceLanguage}
+   return data.translatedText;
+  }catch(e){last=e;if(n<Number($('retry').value)){say('Временна грешка при изречение '+(task.cursor+1)+'. Опит '+(n+1)+'… '+e.message);await new Promise(r=>setTimeout(r,n*1800))}}
+ }
+ throw last||new Error('Неуспешен превод')
+}
+async function run(){
+ if(!task||running)return;running=true;paused=false;stopped=false;stats();
+ try{
+  for(let i=task.cursor||0;i<task.sentences.length;i++){
+   if(stopped)break;
+   if(paused){task.cursor=i;await persist();say('Пауза. Напредъкът е запазен; натисни „Продължи“.');break}
+   if(typeof task.translated[i]==='string'){task.cursor=i+1;continue}
+   say('Превеждане на изречение '+(i+1)+' от '+task.sentences.length+'…');
+   task.translated[i]=await apiTranslate(task.sentences[i]);task.cursor=i+1;task.updated=new Date().toISOString();await persist();stats();
+   const d=Number($('delay').value);if(d)await new Promise(r=>setTimeout(r,d))
+  }
+  if(stopped)say('Задачата е спряна. Всички готови изречения са запазени.');
+  else if(paused)say('Пауза. Натисни „Продължи“, когато си готов.');
+  else if(task.translated.every(x=>typeof x==='string'))say('Готово! Преведени са всички изречения. Запази книгата във файл.');
+ }catch(e){say('Преводът е прекъснат: '+e.message+'\nНапредъкът е запазен. Провери API и натисни „Продължи“.')}
+ finally{running=false;stats()}
+}
+$('start').onclick=async()=>{
+ if(running)return;const file=$('file').files[0];if(!file){say('Първо избери файл.');return}
+ $('start').disabled=true;
+ try{say('Извличане на текста…');const raw=await extract(file);if(!raw.trim())throw new Error('Не е открит текст. За сканиран PDF е необходим OCR.');
+ const parsed=splitParagraphs(raw);if(!parsed.sentences.length)throw new Error('Не успях да разделя текста на изречения.');
+ task={fileName:file.name,target:$('target').value,format:$('format').value,sentences:parsed.sentences,paragraphs:parsed.paragraphs,translated:new Array(parsed.sentences.length).fill(null),cursor:0,created:new Date().toISOString(),detectedSourceLanguage:null};$('detected').textContent='Разпознава се при първото изречение…';
+ await persist();stats();say('Книгата е разделена на '+task.sentences.length+' изречения. Локално използвани този месец: '+monthUsed()+' знака. Започвам…');await run()
+ }catch(e){say('Грешка: '+e.message)}finally{$('start').disabled=false}
+};
+$('resume').onclick=()=>run();$('pause').onclick=()=>{paused=true;say('Пауза след приключване на текущото изречение…')};$('stop').onclick=()=>{stopped=true;paused=false};
+$('clear').onclick=async()=>{if(running){say('Първо спри текущата задача.');return}try{const db=await openDB();await new Promise((resolve,reject)=>{const tx=db.transaction(STORE,'readwrite');tx.objectStore(STORE).delete(TASK_KEY);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});db.close();task=null;stats();say('Запазеният напредък е изтрит.')}catch(e){say('Не успях да изтрия данните: '+e.message)}};
+async function makeDocx(text){const {Document,Packer,Paragraph}=docx;return await Packer.toBlob(new Document({sections:[{children:text.split('\n').map(t=>new Paragraph({text:t}))}]}))}
+async function makePdf(text){const {jsPDF}=window.jspdf,p=new jsPDF({unit:'mm',format:'a4'}),lines=p.splitTextToSize(text,180);let y=15;for(const line of lines){if(y>280){p.addPage();y=15}p.text(line,15,y);y+=6}return p.output('blob')}
+$('download').onclick=async()=>{if(!task||!task.translated.every(x=>typeof x==='string'))return;const text=rebuildText(),fmt=task.format;let blob,name=task.fileName.replace(/\.[^.]+$/,'')+'-bg.'+fmt;
+ try{if(fmt==='docx')blob=await makeDocx(text);else if(fmt==='pdf')blob=await makePdf(text);else{blob=new Blob(['\ufeff',text],{type:'text/plain;charset=utf-8'});name=name.replace(/\.docx$|\.pdf$/i,'.txt')}
+ if(window.AndroidBridge&&window.AndroidBridge.saveFile){const buf=await blob.arrayBuffer();let binary='';const bytes=new Uint8Array(buf);for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));const b64=btoa(binary);window.AndroidBridge.saveFile(name,blob.type||'application/octet-stream',b64);say('Изпратих файла към Android за запис: '+name)}else{const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);say('Файлът е подготвен за запис: '+name)}
+ }catch(e){say('Грешка при създаване на файла: '+e.message)}};
+restore();
+</script></body></html>
